@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBY Stem Separator</title>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div class="sidebar">
+
+    <div class="logo">
+        NBY
+    </div>
+
+    <div class="menu">
+
+        <div class="menu-item active">
+            Stem Separator
+        </div>
+
+       <div class="menu-item">
+            Vocal Remover
+        </div>
+
+        <div class="menu-item">
+            Drum Separator
+        </div>
+
+        <div class="menu-item">
+            Bass Separator
+        </div>
+
+    </div>
+
+</div>
+
+<div class="main">
+
+    <section class="hero">
+
+        <span class="badge">
+            Designed BY Nirbhay
+        </span>
+
+        <h1>
+            Stem Separator <br>
+            and Isolation
+        </h1>
+
+        <p>
+            Separate vocals, drums, bass and instruments
+            from any song using powerful AI models.
+        </p>
+
+        <div class="wave-card">
+
+            <div class="track music">
+                <span>Music</span>
+                <div class="wave green"></div>
+            </div>
+
+            <div class="track vocal">
+                <span>Vocal</span>
+                <div class="wave purple"></div>
+            </div>
+
+        </div>
+
+        <div class="upload-box">
+
+            <input
+                type="file"
+                id="songFile"
+                accept=".mp3,.wav"
+                hidden
+            >
+
+            <button onclick="document.getElementById('songFile').click()">
+                Browse My Files
+            </button>
+
+        </div>
+
+        <div id="progressSection">
+
+            <div id="status"></div>
+
+            <div class="progress-container">
+
+                <div
+                    class="progress-bar"
+                    id="progressBar">
+                </div>
+
+            </div>
+
+        </div>
+
+        <div id="results"></div>
+
+    </section>
+
+</div>
+
+<script src="/static/js/script.js"></script>
+
+</body>
+</html>
