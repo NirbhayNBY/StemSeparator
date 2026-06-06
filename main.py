@@ -8,6 +8,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
 
+from flask import Flask
+
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("separated", exist_ok=True)
+
+app = Flask(__name__)
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
