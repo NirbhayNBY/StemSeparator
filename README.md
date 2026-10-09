@@ -16,7 +16,7 @@ A local web application for separating a song into four audio stems—vocals, dr
 - Internet access on the first run so Demucs can download its pretrained model.
 - Enough disk space for the Python packages, downloaded model, uploaded audio, and generated WAV stems.
 
-This project currently installs the CPU build of PyTorch in the Windows environment set up for it. Separation therefore runs on the CPU and may take several minutes or longer depending on the input and computer.
+The app uses one pretrained MDX four-stem checkpoint (`0d19c1c6`) instead of Demucs' slower four-model `mdx` ensemble or the heavier default `htdemucs` model. It processes 5-second chunks, disables extra random inference shifts, and uses a lower chunk overlap to reduce memory and processing time. Using one checkpoint can slightly reduce separation quality compared with the ensemble. Demucs automatically uses CUDA when the installed PyTorch build and machine support it; otherwise it falls back to CPU. Long songs may still take a while on older CPU-only computers. For faster processing without changing models, use a CUDA-capable machine with a CUDA-enabled PyTorch installation.
 
 ## Setup on Windows
 
@@ -71,7 +71,7 @@ python -m uvicorn main:app
 3. Wait for the status to change to **Separation Complete**. On the first run, Demucs may need to download its pretrained model before processing starts.
 4. Play each generated stem in the page, or click **Download** to save its WAV file.
 
-The progress bar is an approximate visual indicator; the application checks the actual job status separately.
+The progress bar indicates that separation is in progress; elapsed time is displayed because the model does not report a reliable completion percentage. The application checks the job status periodically.
 
 ## Processing flow
 
@@ -81,7 +81,7 @@ The progress bar is an approximate visual indicator; the application checks the 
 4. When complete, the page requests the four stem URLs from `GET /stems/{job_id}`.
 5. Each stem can be streamed or downloaded from `GET /download/{job_id}/{stem}`.
 
-Each job writes its own output under `separated/<job-id>/htdemucs/<uploaded-file-id>/`, containing `vocals.wav`, `drums.wav`, `bass.wav`, and `other.wav`. Each upload receives a unique server-side name so simultaneous uploads with the same original filename do not overwrite one another.
+Each job writes its own output under `separated/<job-id>/0d19c1c6/<uploaded-file-id>/`, containing `vocals.wav`, `drums.wav`, `bass.wav`, and `other.wav`. Each upload receives a unique server-side name so simultaneous uploads with the same original filename do not overwrite one another.
 
 ## Project structure
 
@@ -116,7 +116,7 @@ Interactive API documentation is available at [http://127.0.0.1:8000/docs](http:
 - **`ModuleNotFoundError` when starting:** Activate the project virtual environment and install dependencies with `python -m pip install -r requirements.txt`.
 - **`demucs` command not found:** Confirm that the venv is activated and that the requirements installation completed successfully.
 - **Model download or network error:** Check the internet connection and retry. Demucs needs to fetch its pretrained model if it is not already cached.
-- **Processing is slow:** The configured CPU build can be slow, particularly for long or high-quality audio. Keep the server terminal open until the job completes.
+- **Processing is slow:** Separation time depends on track length and hardware. The app uses one MDX checkpoint, 5-second chunks, faster inference settings, and automatically uses CUDA if available. CPU-only processing, particularly on older computers, can still take longer than the song itself. Keep the server running and the browser tab open until the four stems are ready.
 - **“Server returned a non-JSON response” during processing:** The hosting service returned an HTML error page instead of the app's JSON status. Check the host's server logs for a restart, timeout, or memory limit during Demucs inference. Jobs are kept in memory, so if the server restarts you must upload the track again.
 - **Job not found after restarting:** Job state is stored in memory, so restarting the server clears previously created jobs. Start a new upload.
 - **Files use disk space:** Uploaded files and generated stems are written to `uploads/` and `separated/`; remove files you no longer need.

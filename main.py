@@ -24,6 +24,7 @@ templates = Jinja2Templates(directory=PROJECT_DIR / "templates")
 jobs: dict[str, dict[str, str]] = {}
 SUPPORTED_EXTENSIONS = {".mp3", ".wav"}
 STEM_NAMES = ("vocals", "drums", "bass", "other")
+MODEL_NAME = "0d19c1c6"  # Use one MDX checkpoint instead of the slower four-model ensemble.
 
 
 @app.get("/")
@@ -34,7 +35,7 @@ async def home(request: Request):
 def separate_song(job_id: str, filepath: Path, output_root: Path) -> None:
     job = jobs[job_id]
     job["status"] = "processing"
-    output_folder = output_root / "htdemucs" / filepath.stem
+    output_folder = output_root / MODEL_NAME / filepath.stem
 
     try:
         subprocess.run(
@@ -42,8 +43,14 @@ def separate_song(job_id: str, filepath: Path, output_root: Path) -> None:
                 sys.executable,
                 "-m",
                 "demucs.separate",
-                "--device",
-                "cpu",
+                "--name",
+                MODEL_NAME,
+                "--segment",
+                "5",
+                "--shifts",
+                "0",
+                "--overlap",
+                "0.1",
                 "--out",
                 str(output_root),
                 str(filepath),

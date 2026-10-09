@@ -9,6 +9,7 @@ const root = document.documentElement;
 const progressBar = document.getElementById("progressBar");
 const progressTrack = document.querySelector(".progress-track");
 const statusIndicator = document.getElementById("statusIndicator");
+const progressValue = document.getElementById("progressValue");
 
 const stems = [
     { key: "vocals", label: "Vocals", color: "#c6f276" },
@@ -18,10 +19,10 @@ const stems = [
 ];
 
 let currentJob = "";
-let progress = 0;
-let progressTimer = null;
 let statusTimer = null;
+let elapsedTimer = null;
 let statusFailures = 0;
+let jobStartedAt = 0;
 
 const savedTheme = localStorage.getItem("stemseparator-theme");
 const initialTheme = savedTheme || (
@@ -121,10 +122,11 @@ async function uploadSong(file) {
         currentJob = data.job_id;
         setStatus("Preparing your audio…", "active");
         document.getElementById("progressNote").textContent =
-            "Progress is approximate. Longer tracks take more time to separate.";
-        startApproximateProgress();
+            "Processing time depends on track length and your computer. Keep this tab open.";
+        startElapsedTimer();
         await checkStatus();
     } catch (error) {
+        clearTimers();
         setStatus(error.message || "Upload failed. Please try again.", "error");
         document.getElementById("progressNote").textContent =
             "Check that the server is running, then choose a file to retry.";
@@ -142,21 +144,21 @@ function setStatus(message, state) {
     statusIndicator.classList.toggle("is-error", state === "error");
 }
 
-function startApproximateProgress() {
-    clearInterval(progressTimer);
-    progressTimer = setInterval(() => {
-        if (progress < 90) {
-            updateProgress(Math.min(progress + 2, 90));
-        }
-    }, 1500);
+function startElapsedTimer() {
+    jobStartedAt = Date.now();
+    progressTrack.classList.add("is-indeterminate");
+    elapsedTimer = setInterval(() => {
+        progressValue.textContent = `${formatElapsed(Date.now() - jobStartedAt)} elapsed`;
+    }, 1000);
 }
 
 function updateProgress(value) {
-    progress = value;
+    progressTrack.classList.remove("is-indeterminate");
     progressBar.style.width = `${value}%`;
     progressTrack.setAttribute("aria-valuenow", String(value));
-    document.getElementById("progressValue").textContent =
-        value > 0 && value < 100 ? `${value}%` : "";
+    progressValue.textContent = value === 100 && jobStartedAt
+        ? `Finished in ${formatElapsed(Date.now() - jobStartedAt)}`
+        : "";
 }
 
 async function checkStatus() {
@@ -180,6 +182,7 @@ async function checkStatus() {
 
         if (data.status === "failed") {
             clearTimers();
+            updateProgress(0);
             setStatus("Separation failed.", "error");
             document.getElementById("progressNote").textContent =
                 data.error || "Please try another audio file.";
@@ -196,6 +199,7 @@ async function checkStatus() {
         console.error("Could not check separation status:", error);
         if (error.retryable === false || ++statusFailures >= 5) {
             clearTimers();
+            updateProgress(0);
             setStatus("Could not check the separation status.", "error");
             document.getElementById("progressNote").textContent =
                 `${error.message} Check the server or hosting logs. Choose the file again to retry.`;
@@ -305,8 +309,15 @@ function formatFileSize(bytes) {
 }
 
 function clearTimers() {
-    clearInterval(progressTimer);
     clearTimeout(statusTimer);
-    progressTimer = null;
+    clearInterval(elapsedTimer);
     statusTimer = null;
+    elapsedTimer = null;
+}
+
+function formatElapsed(milliseconds) {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return minutes ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }

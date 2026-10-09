@@ -408,6 +408,11 @@ h1 span {
     transition: width .35s ease;
 }
 
+.progress-track.is-indeterminate .progress-bar {
+    width: 32%;
+    animation: progress-sweep 1.8s ease-in-out infinite;
+}
+
 .progress-note {
     min-height: 14px;
     margin-top: 8px;
@@ -561,6 +566,16 @@ h2 {
     50% {
         opacity: .35;
         transform: scale(.8);
+    }
+}
+
+@keyframes progress-sweep {
+    from {
+        transform: translateX(-110%);
+    }
+
+    to {
+        transform: translateX(340%);
     }
 }
 
