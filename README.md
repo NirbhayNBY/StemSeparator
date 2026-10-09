@@ -117,6 +117,7 @@ Interactive API documentation is available at [http://127.0.0.1:8000/docs](http:
 - **`demucs` command not found:** Confirm that the venv is activated and that the requirements installation completed successfully.
 - **Model download or network error:** Check the internet connection and retry. Demucs needs to fetch its pretrained model if it is not already cached.
 - **Processing is slow:** The configured CPU build can be slow, particularly for long or high-quality audio. Keep the server terminal open until the job completes.
+- **“Server returned a non-JSON response” during processing:** The hosting service returned an HTML error page instead of the app's JSON status. Check the host's server logs for a restart, timeout, or memory limit during Demucs inference. Jobs are kept in memory, so if the server restarts you must upload the track again.
 - **Job not found after restarting:** Job state is stored in memory, so restarting the server clears previously created jobs. Start a new upload.
 - **Files use disk space:** Uploaded files and generated stems are written to `uploads/` and `separated/`; remove files you no longer need.
 

@@ -113,10 +113,9 @@ async function uploadSong(file) {
             method: "POST",
             body: formData,
         });
-        const data = await response.json();
-
-        if (!response.ok || !data.job_id) {
-            throw new Error(data.detail || data.error || "The upload could not be started.");
+        const data = await readApiResponse(response);
+        if (!data.job_id) {
+            throw new Error("The server did not return a separation job ID.");
         }
 
         currentJob = data.job_id;
@@ -167,13 +166,7 @@ async function checkStatus() {
 
     try {
         const response = await fetch(`/status/${encodeURIComponent(currentJob)}`);
-        const data = await response.json();
-
-        if (!response.ok || data.error) {
-            const error = new Error(data.detail || data.error || "Could not read the separation status.");
-            error.retryable = response.status >= 500;
-            throw error;
-        }
+        const data = await readApiResponse(response);
         statusFailures = 0;
 
         if (data.status === "completed") {
@@ -205,7 +198,7 @@ async function checkStatus() {
             clearTimers();
             setStatus("Could not check the separation status.", "error");
             document.getElementById("progressNote").textContent =
-                `${error.message} Choose the file again to retry.`;
+                `${error.message} Check the server or hosting logs. Choose the file again to retry.`;
             return;
         }
         setStatus("Connection interrupted. Retrying…", "active");
@@ -217,11 +210,7 @@ async function checkStatus() {
 async function loadStems() {
     try {
         const response = await fetch(`/stems/${encodeURIComponent(currentJob)}`);
-        const data = await response.json();
-
-        if (!response.ok || data.error) {
-            throw new Error(data.error || "Could not load the separated stems.");
-        }
+        const data = await readApiResponse(response);
 
         const results = document.getElementById("results");
         results.replaceChildren(...stems.map((stem, index) =>
@@ -274,6 +263,38 @@ function createStemCard(stem, url, index) {
 
     card.append(heading, audio, download);
     return card;
+}
+
+async function readApiResponse(response) {
+    const body = await response.text();
+    let data;
+
+    try {
+        data = JSON.parse(body);
+    } catch {
+        const error = new Error(
+            `The server returned a non-JSON response (HTTP ${response.status}). ` +
+            "The app may have restarted or the hosting service may have stopped the request."
+        );
+        error.retryable = response.status >= 500;
+        throw error;
+    }
+
+    if (!data || typeof data !== "object") {
+        const error = new Error("The server returned an invalid JSON response.");
+        error.retryable = response.status >= 500;
+        throw error;
+    }
+
+    if (!response.ok || data.error) {
+        const error = new Error(
+            data.detail || data.error || `Request failed (HTTP ${response.status}).`
+        );
+        error.retryable = response.status >= 500;
+        throw error;
+    }
+
+    return data;
 }
 
 function formatFileSize(bytes) {
