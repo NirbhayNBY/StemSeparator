@@ -1,114 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NBY Stem Separator</title>
-
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#101114">
+    <meta name="description" content="Separate a song into vocals, drums, bass, and instrumental stems.">
+    <title>StemSeparator — Audio stem separation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=3">
 </head>
 <body>
-
-<div class="sidebar">
-
-    <div class="logo">
-        NBY
-    </div>
-
-    <div class="menu">
-
-        <div class="menu-item active">
-            Stem Separator
-        </div>
-
-       <div class="menu-item">
-            Vocal Remover
-        </div>
-
-        <div class="menu-item">
-            Drum Separator
-        </div>
-
-        <div class="menu-item">
-            Bass Separator
-        </div>
-
-    </div>
-
-</div>
-
-<div class="main">
-
-    <section class="hero">
-
-        <span class="badge">
-            Designed BY Nirbhay
-        </span>
-
-        <h1>
-            Stem Separator <br>
-            and Isolation
-        </h1>
-
-        <p>
-            Separate vocals, drums, bass and instruments
-            from any song using powerful AI models.
-        </p>
-
-        <div class="wave-card">
-
-            <div class="track music">
-                <span>Music</span>
-                <div class="wave green"></div>
-            </div>
-
-            <div class="track vocal">
-                <span>Vocal</span>
-                <div class="wave purple"></div>
-            </div>
-
-        </div>
-
-        <div class="upload-box">
-
-            <input
-                type="file"
-                id="songFile"
-                accept=".mp3,.wav"
-                hidden
-            >
-
-            <button onclick="document.getElementById('songFile').click()">
-                Browse My Files
+    <div class="app-shell">
+        <header class="topbar">
+            <a class="brand" href="/" aria-label="StemSeparator home">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M4 10v4m4-8v12m4-15v18m4-13v8m4-11v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </span>
+                <span>stem<span class="brand-light">separator</span></span>
+            </a>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light theme" title="Switch theme">
+                <svg class="sun-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.7"/>
+                    <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+                <svg class="moon-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M20.2 15.4A8.5 8.5 0 0 1 8.6 3.8 8.5 8.5 0 1 0 20.2 15.4Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
             </button>
+        </header>
 
-        </div>
+        <main class="main-content">
+            <section class="intro" aria-labelledby="page-title">
+                <div class="eyebrow"><span class="eyebrow-dot"></span> AI-POWERED AUDIO TOOLS</div>
+                <h1 id="page-title">Every layer.<br><span>On its own.</span></h1>
+                <p class="intro-copy">Separate a song into vocals, drums, bass, and instruments.<br class="desktop-break"> Your audio stays yours — upload and get to work.</p>
+            </section>
 
-        <div id="progressSection">
+            <section class="workspace" aria-label="Separate an audio file">
+                <label class="upload-zone" id="dropZone" for="songFile" tabindex="0">
+                    <input type="file" id="songFile" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav">
+                    <span class="upload-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="upload-title">Drop your audio here</span>
+                    <span class="upload-hint">or <span class="browse-link">browse files</span> from your device</span>
+                    <span class="file-types">MP3 or WAV <span aria-hidden="true">·</span> Audio files only</span>
+                </label>
 
-            <div id="status"></div>
-
-            <div class="progress-container">
-
-                <div
-                    class="progress-bar"
-                    id="progressBar">
+                <div class="selected-file" id="selectedFile" hidden>
+                    <span class="file-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M9 18V5l12-2v13M9 18c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2Zm12-2c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2ZM9 9l12-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="file-info">
+                        <span class="file-name" id="fileName"></span>
+                        <span class="file-size" id="fileSize"></span>
+                    </span>
+                    <button class="change-file" id="changeFile" type="button">Change</button>
                 </div>
 
-            </div>
+                <div class="processing-panel" id="processingPanel" hidden>
+                    <div class="processing-copy">
+                        <span class="status-indicator" id="statusIndicator"></span>
+                        <span id="status" role="status" aria-live="polite">Ready to upload</span>
+                        <span class="progress-value" id="progressValue"></span>
+                    </div>
+                    <div class="progress-track" role="progressbar" aria-label="Approximate separation progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <p class="progress-note" id="progressNote"></p>
+                </div>
+            </section>
 
-        </div>
+            <section class="results-section" id="resultsSection" aria-labelledby="resultsTitle" hidden>
+                <div class="results-heading">
+                    <div>
+                        <div class="eyebrow">YOUR EXPORTS</div>
+                        <h2 id="resultsTitle">Separated stems</h2>
+                    </div>
+                    <span class="results-count">4 TRACKS</span>
+                </div>
+                <div class="results-grid" id="results"></div>
+            </section>
 
-        <div id="results"></div>
-
-    </section>
-
-</div>
-
-<script src="/static/js/script.js"></script>
-
+            <p class="privacy-note">
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M10 2.5 4 5v4.6c0 3.9 2.6 6.5 6 7.9 3.4-1.4 6-4 6-7.9V5l-6-2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                    <path d="m7.5 10 1.7 1.7 3.5-3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Audio is processed locally by this app and saved on its host machine.
+            </p>
+        </main>
+        <footer class="footer">MADE FOR MUSIC MAKERS <span>·</span> STEMSEPARATOR</footer>
+    </div>
+    <script src="/static/js/script.js?v=3"></script>
 </body>
 </html>

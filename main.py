@@ -1,145 +1,147 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
-from fastapi.responses import FileResponse
+import logging
 import shutil
-import os
 import subprocess
+import sys
 import uuid
+from pathlib import Path
+
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi import Request
 
-from flask import Flask
+PROJECT_DIR = Path(__file__).resolve().parent
+UPLOAD_DIR = PROJECT_DIR / "uploads"
+SEPARATED_DIR = PROJECT_DIR / "separated"
+UPLOAD_DIR.mkdir(exist_ok=True)
+SEPARATED_DIR.mkdir(exist_ok=True)
 
-os.makedirs("uploads", exist_ok=True)
-os.makedirs("separated", exist_ok=True)
-
-app = Flask(__name__)
+logger = logging.getLogger(__name__)
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=PROJECT_DIR / "static"), name="static")
+templates = Jinja2Templates(directory=PROJECT_DIR / "templates")
 
-templates = Jinja2Templates(directory="templates")
-UPLOAD_DIR = "uploads"
-SEPARATED_DIR = "separated"
+jobs: dict[str, dict[str, str]] = {}
+SUPPORTED_EXTENSIONS = {".mp3", ".wav"}
+STEM_NAMES = ("vocals", "drums", "bass", "other")
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(SEPARATED_DIR, exist_ok=True)
-
-jobs = {}
 
 @app.get("/")
 async def home(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html"
-    )   
+    return templates.TemplateResponse(request=request, name="index.html")
 
-def separate_song(job_id, filepath):
+
+def separate_song(job_id: str, filepath: Path, output_root: Path) -> None:
+    job = jobs[job_id]
+    job["status"] = "processing"
+    output_folder = output_root / "htdemucs" / filepath.stem
+
     try:
-        jobs[job_id]["status"] = "processing"
-
         subprocess.run(
-            ["demucs", filepath],
-            check=True
+            [
+                sys.executable,
+                "-m",
+                "demucs.separate",
+                "--device",
+                "cpu",
+                "--out",
+                str(output_root),
+                str(filepath),
+            ],
+            check=True,
+            cwd=PROJECT_DIR,
+            capture_output=True,
+            text=True,
         )
 
-        song_name = os.path.splitext(
-            os.path.basename(filepath)
-        )[0]
+        missing_stems = [
+            stem for stem in STEM_NAMES
+            if not (output_folder / f"{stem}.wav").is_file()
+        ]
+        if missing_stems:
+            raise RuntimeError(
+                f"Demucs did not produce the expected stems: {', '.join(missing_stems)}"
+            )
 
-        jobs[job_id]["status"] = "completed"
-        jobs[job_id]["output_folder"] = (
-            f"separated/htdemucs/{song_name}"
-        )
-
-    except Exception as e:
-        jobs[job_id]["status"] = "failed"
-        jobs[job_id]["error"] = str(e)
+        job["output_folder"] = str(output_folder)
+        job["status"] = "completed"
+    except (OSError, subprocess.CalledProcessError, RuntimeError) as error:
+        detail = error.stderr.strip() if isinstance(error, subprocess.CalledProcessError) else str(error)
+        logger.exception("Audio separation failed for job %s", job_id)
+        job["status"] = "failed"
+        job["error"] = detail or "Audio separation failed. Check the server log."
 
 
 @app.post("/upload")
 async def upload_song(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
 ):
-    filepath = os.path.join(
-        UPLOAD_DIR,
-        file.filename
-    )
-
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(
-            file.file,
-            buffer
-        )
+    filename = Path(file.filename or "").name
+    extension = Path(filename).suffix.lower()
+    if not filename or extension not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Upload an MP3 or WAV audio file.")
 
     job_id = str(uuid.uuid4())
+    filepath = UPLOAD_DIR / f"{job_id}{extension}"
+    output_root = SEPARATED_DIR / job_id
+
+    try:
+        with filepath.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except OSError as error:
+        logger.exception("Could not store uploaded audio file")
+        raise HTTPException(status_code=500, detail="Could not save the uploaded audio file.") from error
+    finally:
+        await file.close()
 
     jobs[job_id] = {
         "status": "queued",
-        "filename": file.filename
+        "filename": filename,
     }
-
-    background_tasks.add_task(
-        separate_song,
-        job_id,
-        filepath
-    )
-
-    return {
-        "job_id": job_id,
-        "status": "queued"
-    }
+    background_tasks.add_task(separate_song, job_id, filepath, output_root)
+    return {"job_id": job_id, "status": "queued"}
 
 
 @app.get("/status/{job_id}")
 def get_status(job_id: str):
-
-    if job_id not in jobs:
-        return {
-            "error": "job not found"
-        }
-
-    return jobs[job_id]
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return {key: job[key] for key in ("status", "filename", "error") if key in job}
 
 
 @app.get("/stems/{job_id}")
 def get_stems(job_id: str):
-
-    if job_id not in jobs:
-        return {"error": "job not found"}
-
-    if jobs[job_id]["status"] != "completed":
-        return {"error": "processing"}
-
-    filename = jobs[job_id]["filename"]
-    song_name = os.path.splitext(filename)[0]
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job["status"] != "completed":
+        raise HTTPException(status_code=409, detail="Audio separation is not complete.")
 
     return {
-        "vocals": f"/download/{job_id}/vocals",
-        "drums": f"/download/{job_id}/drums",
-        "bass": f"/download/{job_id}/bass",
-        "other": f"/download/{job_id}/other"
+        stem: f"/download/{job_id}/{stem}"
+        for stem in STEM_NAMES
     }
 
 
 @app.get("/download/{job_id}/{stem}")
 def download_stem(job_id: str, stem: str):
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if stem not in STEM_NAMES:
+        raise HTTPException(status_code=404, detail="Stem not found.")
+    if job["status"] != "completed":
+        raise HTTPException(status_code=409, detail="Audio separation is not complete.")
 
-    if job_id not in jobs:
-        return {"error": "job not found"}
-
-    filename = jobs[job_id]["filename"]
-    song_name = os.path.splitext(filename)[0]
-
-    filepath = (
-        f"separated/htdemucs/{song_name}/{stem}.wav"
-    )
-
-    if not os.path.exists(filepath):
-        return {"error": "file not found"}
+    filepath = Path(job["output_folder"]) / f"{stem}.wav"
+    if not filepath.is_file():
+        logger.error("Expected stem file is missing: %s", filepath)
+        raise HTTPException(status_code=404, detail="Stem file not found.")
 
     return FileResponse(
         path=filepath,
         filename=f"{stem}.wav",
-        media_type="audio/wav"
+        media_type="audio/wav",
     )
